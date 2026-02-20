@@ -1,0 +1,33 @@
+Organisation du projet et justification des choix
+
+    Project.toml : fichier standard Julia pour gérer les dépendances nécessaires (notamment DataStructures.jl pour Queue et PriorityQueue).
+
+    src/ : contient tout le code source. La séparation par fichier permet une compilation partielle et facilite la maintenance.
+
+    PathFindingProject.jl : module principal qui inclut tous les fichiers sources et exporte uniquement les fonctions publiques algoBFS, algoDijkstra, algoGlouton et algoAstar. Cela assure la modularité et l’encapsulation, similaire à un fichier header en C++.
+
+    map_loader.jl : gère la lecture des fichiers .map et transforme les données en matrice 2D, qui sert de graphe implicite. La matrice permet de représenter les obstacles et les cases libres sans avoir besoin d’une structure de graphe explicite.
+
+    grid.jl : regroupe les fonctions pour calculer les voisins valides d’une case et vérifier les positions valides sur la grille. Cela centralise la logique de navigation sur la matrice et évite la duplication de code dans chaque algorithme.
+
+    bfs.jl / dijkstra.jl / glouton.jl / astar.jl : chaque algorithme de path finding est implémenté dans un fichier séparé, ce qui permet de tester, comparer et optimiser individuellement chaque algorithme. La séparation est également pratique pour l’évaluation académique.
+
+    utils.jl : regroupe les fonctions utilitaires communes, comme la reconstruction du chemin depuis le dictionnaire came_from, l’affichage des résultats dans le format demandé, et le calcul des heuristiques (pour Glouton et A*). Cela évite la duplication de code et améliore la lisibilité.
+
+    dat/ : contient toutes les instances .map utilisées pour tester les algorithmes. Cela sépare clairement les données du code source.
+
+    doc/ : contient la documentation et le rapport du projet.
+
+    test/runtests.jl : fichier de tests automatisés qui vérifie que les algorithmes fonctionnent correctement sur les instances fournies. Cela garantit la robustesse du code avant remise.
+
+    main.jl : point d’entrée pour exécuter les algorithmes sur des instances réelles. Il appelle les fonctions exportées du module principal.
+
+    README.md : fournit les instructions d’exécution, la liste des fichiers, et les dépendances nécessaires.
+
+Choix techniques clés :
+
+    Utilisation d’une matrice 2D comme graphe implicite, conformément aux consignes interdisant les packages de graphes.
+
+    Utilisation de Queue et PriorityQueue de Julia pour simplifier BFS et Dijkstra/A* sans réimplémenter les structures de données.
+
+    Modularité via les modules et l’export pour limiter l’espace de noms et rendre le code plus clair et réutilisable.
