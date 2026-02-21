@@ -1,5 +1,5 @@
 #Fonction pour charger une carte et créer la matrice correspondant à  cette carte
-function chargerCarte(fname::String)
+function loadMap(fname::String)
     #Lecture fichier
     lines = open(fname,"r") do f
         readlines(f)
@@ -28,7 +28,8 @@ function chargerCarte(fname::String)
 end
 
 #Cette fonction nous permet d'obtenir une matrice de booléen pour connaitre les cases déjà visitées.
-function chargerCarteVisite(fname::String)
+
+#=function chargerCarteVisite(fname::String)
     #Lecture fichier
     lines = open(fname,"r") do f
         readlines(f)
@@ -51,14 +52,15 @@ function chargerCarteVisite(fname::String)
     return carte
     print(n,m)
 end
+=#
 
-function voisins(grille::Matrix{Int},x::Int,y::Int)
+function neighbors(grille::Matrix{Int},x::Int,y::Int)
     n,m = size(grille)
     directions = [(0,1),(0,-1),(-1,0),(1,0)]
-    res = Tuple{UInt,UInt}[]
+    res = Tuple{Int,Int}[]
     for d in directions
         dx,dy = d
-        if grille[x+dx,y+dy]!=0 
+        if grille[x+dx,y+dy]!= typemax(Int)
             push!(res,(x+dx,y+dy))
         end
     end

@@ -31,3 +31,14 @@ Choix techniques clés :
     Utilisation de Queue et PriorityQueue de Julia pour simplifier BFS et Dijkstra/A* sans réimplémenter les structures de données.
 
     Modularité via les modules et l’export pour limiter l’espace de noms et rendre le code plus clair et réutilisable.
+
+Choix d'implémentation : 
+     J'ai choisi d'utiliser une matrice qui représente un graphe implicite plutôt qu'une implémentation pour un graphe explicite pour modéliser la carte, pour ces raisons ci-dessous : 
+     -Coût de stockage moindre, car les arête ne sont pas stockées mais calculées à la volée
+     -Représenation plus proche de la carte, chaque point (x,y) est un sommet.
+
+Structure projet : 
+    grid.cost   → matrice n×m
+    neighbors() → génère jusqu'à 4 voisins
+    visited     → Set ou matrice Bool
+    parent      → Dict
