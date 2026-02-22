@@ -48,33 +48,33 @@ end
 function neighbors(grille::Matrix{Int},s::Tuple{Int,Int})
     y,x = s
     n,m = size(grille)
-    res = Tuple{Int,Int}[]
+    res = MutableLinkedList{Tuple{Int,Int}}()
     
     #Droite
-    if y<n
-        if grille[y+1,x]!= typemax(Int)
-            push!(res,(y+1,x))
+    if x<m
+        if grille[y,x+1]!= typemax(Int)
+            push!(res,(y,x+1))
+        end
+    end
+    
+    #Gauche
+    if x>1 
+        if grille[y,x-1]!= typemax(Int)
+            push!(res,(y,x-1))
         end
     end
 
-    #Gauche
-    if x>1 
+    #Haut
+    if y>1 
         if grille[y-1,x]!= typemax(Int)
             push!(res,(y-1,x))
         end
     end
 
-    #Haut
-    if x>1 
-        if grille[x,y]!= typemax(Int)
-            push!(res,(x,y-1))
-        end
-    end
-
     #Bas
-    if x<m
-        if grille[y,x]!= typemax(Int)
-            push!(res,(y,x+1))
+    if y<n
+        if grille[y+1,x]!= typemax(Int)
+            push!(res,(y+1,x))
         end
     end
 
@@ -86,27 +86,50 @@ end
 function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     map = loadMap(fname)
     n,m = size(map)
-    visted = falses(n,m)
+    
     #Initialisation de la file et ajout de D
-
     q = Queue{Tuple{Int,Int}}()
     enqueue!(q,D)
+
     b = true # Ce booléen permet de savoir si on a atteint A
 
+    visited = Set{Tuple{Int,Int}}()
+    dictParent = Dict{Tuple{Int,Int},Tuple{Int,Int}}(D=>D)
+    #Chemin parcouru . NB : L'ajout à la fin du vector se fait en temps constant en amorti
+    chemin = Tuple{Int,Int}[]
+
+    #Parcours en largeur du graphe
     while b & !(isempty(q))
          u = dequeue!(q)
          if u==A 
             b = false
+            push!(visited,u)
+            #dictParent[A] = u
             continue
          end
-         yp,xp = u
-         visted[yp,xp] = true
 
-         ngbr = neighbors(map,u)
-         for s in ngbr
-            enqueue!(q,s)
-         end
+         if !(u in visited)
+            push!(visited,u)
+            ngbr = neighbors(map,u)
+            for s in ngbr
+                ys,xs = s
+                if !(s in visited)
+                    enqueue!(q,s)
+                    dictParent[s] = u
+                end
+            end
+        end
     end
 
-    return true,b
+    #Constitution du plus court chemin parcouru de D à A
+    push!(chemin,A)
+    s = dictParent[A]
+    while s!=D
+        push!(chemin,s)
+        s = dictParent[s]
+    end
+    push!(chemin,D)
+    #reverse se fait en temps constant pour le type Vector
+    chemin = reverse!(chemin)
+    return chemin
 end
