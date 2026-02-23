@@ -91,28 +91,24 @@ function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     q = Queue{Tuple{Int,Int}}()
     enqueue!(q,D)
 
-    b = true # Ce booléen permet de savoir si on a atteint A
-
     visited = Set{Tuple{Int,Int}}()
     dictParent = Dict{Tuple{Int,Int},Tuple{Int,Int}}(D=>D)
     #Chemin parcouru . NB : L'ajout à la fin du vector se fait en temps constant en amorti
     chemin = Tuple{Int,Int}[]
 
     #Parcours en largeur du graphe
-    while b & !(isempty(q))
+    while !(isempty(q))
          u = dequeue!(q)
          if u==A 
             b = false
             push!(visited,u)
-            #dictParent[A] = u
-            continue
+            break
          end
 
          if !(u in visited)
             push!(visited,u)
             ngbr = neighbors(map,u)
             for s in ngbr
-                ys,xs = s
                 if !(s in visited)
                     enqueue!(q,s)
                     dictParent[s] = u
@@ -131,5 +127,76 @@ function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     push!(chemin,D)
     #reverse se fait en temps constant pour le type Vector
     chemin = reverse!(chemin)
-    return chemin
+    print("Distance D->A :",length(chemin)-1,"\n")
+    print("Number of states evaluated :",length(visited),"\n")
+    str = string(D)
+    for e in  chemin[2:end]
+        str=str*"->"*string(e)
+    end
+    print("Path D->A :"*str)
+end
+
+#**********ALGO Dikstra******************************************************
+function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
+    map = loadMap(fname)
+
+    # File de priorité (clé = sommet, priorité = distance)
+    pq = PriorityQueue{Tuple{Int,Int}, Int}()
+
+    # Dictionnaire de distance minimale connue et dictionnaire du parent pour l'arbre issu du parcourt
+    dist = Dict{Tuple{Int,Int},Int}()
+    dictParent = Dict{Tuple{Int,Int}, Tuple{Int,Int}}()
+
+    # Initialisation
+    dist[D] = 0
+    dictParent[D] = D
+    pq[D] = 0
+
+    visited = Set{Tuple{Int,Int}}()
+
+    while !isempty(pq)
+
+        u = dequeue!(pq)
+
+        if u == A
+            break
+        end
+
+        if !(u in visited)
+            push!(visited, u)
+
+            for v in neighbors(map, u)
+                newDist = dist[u] + map[v[1], v[2]]
+
+                if !haskey(dist, v) || newDist < dist[v]
+
+                    dist[v] = newDist
+                    dictParent[v] = u
+                    pq[v] = newDist
+                end
+            end
+        end
+    end
+
+    # Reconstruction du chemin
+    chemin = Tuple{Int,Int}[]
+    push!(chemin, A)
+
+    s = dictParent[A]
+    while s != D
+        push!(chemin, s)
+        s = dictParent[s]
+    end
+
+    push!(chemin, D)
+    chemin = reverse!(chemin)
+
+    println("Distance D->A :", dist[A])
+    println("Number of states evaluated :", length(visited))
+
+    str = string(D)
+    for e in chemin[2:end]
+        str = str * "->" * string(e)
+    end
+    println("Path D->A :" * str)
 end
