@@ -137,14 +137,15 @@ function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     push!(chemin,D)
     #reverse se fait en temps constant pour le type Vector
     chemin = reverse!(chemin)
-    print("Distance D->A en nombre de points:",length(chemin)-1,"\n")
-    print("Number of states evaluated :",length(visited),"\n")
-    println("Coût D->A :", cout,"\n")
+    println("Distance D->A :",length(chemin))
+    println("Number of states evaluated :",length(visited))
+    println("Coût D->A :", cout)
+    println("Coût réelle D->A :", cout)
     str = string(D)
     for e in  chemin[2:end]
         str=str*"->"*string(e)
     end
-    print("Path D->A :"*str)
+    println("Path D->A : "*str)
 end
 
 #**********ALGO Dikstra******************************************************
@@ -152,7 +153,7 @@ function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     map = loadMap(fname)
 
     #Cas où A ou D se trouve sur un obsltacle : un mur ou un arbre
-    if (map[A[1],A[2]]==typemax(Int) || map[A[1],A[2]]==typemax(Int))
+    if (map[A[1],A[2]]==typemax(Int) || map[D[1],D[2]]==typemax(Int))
         println("A ou D est inacessible.")
     end
 
@@ -168,7 +169,9 @@ function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     dictParent[D] = D
     pq[D] = 0
 
-    #Dans cet algo visited, doit-on garder visited ?
+    #treated permet de stocker les sommets dont leur coût est déjà minimal afin d'optimiser en ne les rajoutant encore dans la file de priorité
+    treated = Set{Tuple{Int,Int}}()
+    #Pour  compter le nombre de sommets visités : mesurer la performance
     visited = Set{Tuple{Int,Int}}()
 
     while !isempty(pq)
@@ -179,16 +182,18 @@ function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
             break
         end
 
-        if !(u in visited)
+        if !(u in treated)
+            push!(treated, u)
             push!(visited, u)
 
             for v in neighbors(map, u)
+                push!(visited, v)
                 newDist = dist[u] + map[v[1], v[2]]
                  #Ici on utilise l'évaluation naïve des expressions booléen pour l'opérateur '||'
                 if !haskey(dist, v) || newDist < dist[v]
-
                     dist[v] = newDist
                     dictParent[v] = u
+                    #f(n) = g(n)
                     pq[v] = newDist
                 end
             end
@@ -202,9 +207,9 @@ function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     end
 
     # Reconstruction du chemin et calcul coût
+    cout=map[D[1],D[2]]
     chemin = Tuple{Int,Int}[]
     push!(chemin, A)
-    cout=map[D[1],D[2]]
     s = dictParent[A]
     while s != D
         cout+=map[s[1],s[2]]
@@ -215,15 +220,16 @@ function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     push!(chemin, D)
     chemin = reverse!(chemin)
 
-    println("Distance D->A en nombre de points:", dist[A])
-    println("Number of states evaluated :", length(visited))
-    println("Coût D->A :", cout,"\n")
+    println("Distance D->A : ", length(chemin))
+    println("Number of states evaluated : ", length(visited))
+    println("Coût D->A :", dist[A])
+    println("Coût réelle D->A : ", cout)
 
     str = string(D)
     for e in chemin[2:end]
         str = str * "->" * string(e)
     end
-    println("Path D->A :" * str)
+    println("Path D->A : " * str)
 end
 
 
@@ -248,6 +254,86 @@ function algoAstar(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
 
     pq[D] = heuristic(D, A)
 
+    #treated permet de stocker les sommets dont leur coût est déjà minimal afin d'optimiser en ne les rajoutant encore dans la file de priorité
+    treated = Set{Tuple{Int,Int}}()
+    #Pour  compter le nombre de sommets visités : mesurer la performance
+    visited = Set{Tuple{Int,Int}}()
+
+    while !isempty(pq)
+
+        u = dequeue!(pq)
+
+        if u == A
+            break
+        end
+
+        if !(u in treated)
+            push!(treated, u)
+            push!(visited, u)
+
+            for v in neighbors(map, u)
+                push!(visited, v)
+                newDist = dist[u] + map[v[1],v[2]]
+
+                if !haskey(dist, v) || newDist < dist[v]
+                    dist[v] = newDist
+                    dictParent[v] = u
+                    # f(n) = g(n) + h(n)
+                    pq[v] = newDist + heuristic(v, A)
+                    if !haskey(dist, v)
+                        cpt+=1
+                    end
+                end
+            end
+        end
+    end
+
+    if !haskey(dist, A)
+        println("A n'est pas atteignable depuis D")
+        return
+    end
+
+    coutCh=map[D[1],D[2]]
+    chemin = Tuple{Int,Int}[]
+    push!(chemin, A)
+    s = dictParent[A]
+    while s != D
+        coutCh+=map[s[1],s[2]]
+        push!(chemin, s)
+        s = dictParent[s]
+    end
+
+    push!(chemin, D)
+    reverse!(chemin)
+
+    println("Distance D->A :", length(chemin))
+    println("Number of states evaluated : ", length(visited))
+    println("Coût D->A :", dist[A])
+    println("Coût réelle D->A :", coutCh)
+
+    str = string(D)
+    #début : fin : pas
+    for e in chemin[2:end]
+        str *= "->" * string(e)
+    end
+    println("Path D->A : " * str)
+end
+
+
+
+#**********ALGO Glouton******************************************************
+function algoGlouton(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
+    map = loadMap(fname)
+
+    if map[A[1],A[2]] == typemax(Int) || map[D[1],D[2]] == typemax(Int)
+        println("A ou D est inaccessible.")
+        return
+    end
+
+    pq = PriorityQueue{Tuple{Int,Int}, Int}()
+    dictParent = Dict{Tuple{Int,Int},Tuple{Int,Int}}()
+    dictParent[D] = D
+    pq[D] = heuristic(D, A)
     visited = Set{Tuple{Int,Int}}()
 
     while !isempty(pq)
@@ -261,30 +347,26 @@ function algoAstar(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
         if !(u in visited)
             push!(visited, u)
             for v in neighbors(map, u)
-                cout = map[v[1],v[2]]
-                newDist = dist[u] + cout
-                #Ici on utilise l'évaluation naïve des expressions booléen pour l'opérateur '||'
-                if !haskey(dist, v) || newDist < dist[v]
-                    dist[v] = newDist
+                if !(v in visited)
                     dictParent[v] = u
-
-                    # priorité = g + h
-                    pq[v] = newDist + heuristic(v, A)
+                    #f(n) = h(n)
+                    pq[v] = heuristic(v, A)
                 end
             end
         end
     end
 
-    if !haskey(dist, A)
+    if !haskey(dictParent, A)
         println("A n'est pas atteignable depuis D")
         return
     end
 
     chemin = Tuple{Int,Int}[]
     push!(chemin, A)
-
+    cout=map[D[1],D[2]]
     s = dictParent[A]
     while s != D
+        cout+=map[s[1],s[2]]
         push!(chemin, s)
         s = dictParent[s]
     end
@@ -292,8 +374,9 @@ function algoAstar(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     push!(chemin, D)
     reverse!(chemin)
 
-    println("Distance D->A :", dist[A])
+    println("Distance D->A :", length(chemin))
     println("Number of states evaluated :", length(visited))
+    println("Coût réelle D->A :", cout)
 
     str = string(D)
     for e in chemin[2:end]
