@@ -82,6 +82,7 @@ end
 
 
 #***********ALGO BFS*********************************
+
 function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     map = loadMap(fname)
 
@@ -149,6 +150,7 @@ function algoBFS(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
 end
 
 #**********ALGO Dikstra******************************************************
+
 function algoDijkstra(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     map = loadMap(fname)
 
@@ -322,6 +324,7 @@ end
 
 
 #**********ALGO Glouton******************************************************
+
 function algoGlouton(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     map = loadMap(fname)
 
@@ -384,3 +387,11 @@ function algoGlouton(fname::String, D::Tuple{Int,Int}, A::Tuple{Int,Int})
     end
     println("Path D->A :" * str)
 end
+
+#= Exemple illlustratif que AlgoGlouton donne pas forcément la meilleure solution : le chemin plus court optimal
+include("src/PathFindingProject.jl")
+algoBFS("test/exempleMapGlouton.map",(1,1),(10,10))
+map = algoDijkstra("test/exempleMapGlouton.map",(1,1),(10,10))
+map = algoAstar("test/exempleMapGlouton.map",(1,1),(10,10))
+map = algoGlouton("test/exempleMapGlouton.map",(1,1),(10,10))
+=#
