@@ -1,7 +1,8 @@
 #**********ALGO Dikstra******************************************************
 
 function algoDijkstra(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
-    map = loadMap(fname)
+    env = emptyEnv(fname)
+    map = env.map
 
     #Cas où A ou D se trouve sur un obsltacle : un mur ou un arbre
     if (map[A[1],A[2]]==typemax(Int64) || map[D[1],D[2]]==typemax(Int64))
@@ -37,7 +38,7 @@ function algoDijkstra(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64
             push!(treated, u)
             push!(visited, u)
 
-            for v in neighbors(map, u)
+            for v in neighbors(env, u,-1)
                 push!(visited, v)
                 newDist = dist[u] + map[v[1], v[2]]
                  #Ici on utilise l'évaluation naïve des expressions booléen pour l'opérateur '||'

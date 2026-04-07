@@ -14,7 +14,7 @@ gr() # Pour sélectionner le moteur graphique utilisé par Plots pour afficher l
 include("src/grid.jl")
 include("src/utils.jl")
 include("src/AMR.jl")
-
+include("src/crossDock.jl")
 # Ensuite les algorithmes
 include("src/bfs.jl")
 include("src/dijkstra.jl")

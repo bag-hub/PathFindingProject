@@ -1,8 +1,8 @@
 #**********ALGO Astar******************************************************
 
 function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
-    map = loadMap(fname)
-
+    env = emptyEnv(fname)
+    map = env.map
     pq = PriorityQueue{Tuple{Int64,Int64}, Int64}()
 
     dist = Dict{Tuple{Int64,Int64},Int64}()          # g(n)
@@ -30,7 +30,7 @@ function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
             push!(treated, u)
             push!(visited, u)
 
-            for v in neighbors(map, u)
+            for v in neighbors(env, u, -1)
                 push!(visited, v)
                 newDist = dist[u] + map[v[1],v[2]]
 

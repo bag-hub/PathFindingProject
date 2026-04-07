@@ -1,16 +1,19 @@
 #**************************************************
 
 # Struct Environement ajouté dans la 2e partie du projet pour ré-adapter 
-struct Environnement
+struct Environment
     # La carte 
     map::Matrix{Int64}
     # Le dictionnaire des intervalles où les positions 
+    #(y,x) => tableau de paires d'intervalles
     dyn_obcls::Dict{Tuple{Int64,Int64},Vector{Tuple{Int64,Int64}}}
 end 
 
-# Cette permet de créer une carte map simple utilisée dans la première partie du projet
-function empty_env(map::Matrix{Int64})
-    return Environnement(map,Vector{Tuple{Int64,Int64}}())
+# Cette fonction permet de créer un environnement sans contrainte pour l'initialisation au début des missions des AMR
+function emptyEnv(fname::String)
+    map = loadMap(fname)
+    d = Dict{Tuple{Int64,Int64}, Vector{Tuple{Int64,Int64}}}()
+    return Environment(map, d)
 end
 
 
@@ -43,43 +46,58 @@ function loadMap(fname::String)
     return carte
 end
 
-function neighbors(grille::Matrix{Int64},s::Tuple{Int64,Int64})
+function neighbors(env::Environment, s::Tuple{Int64,Int64},t)
     y,x = s
+    grille = env.map 
     n,m = size(grille)
+
+    #Utilisation d'une liste pour une meilleure complexité sur l'ajout de paires
     res = MutableLinkedList{Tuple{Int64,Int64}}()
     
     # Droite
     if x<m
-        if grille[y,x+1]!= typemax(Int64)
-            push!(res,(y,x+1))
+        dy,dx = y,x+1
+        if grille[dy,dx]!= typemax(Int64)
+            if t==-1 || !is_collision(env,dy,dx,t)   #On utilise le test de t==-1 pour l'évaluation court-circuit(short-circuit evaluation) pour ne pas appeler la fonction is_collision si on utilise neighbors pour la partie 1 du projet 
+                push!(res,(dy,dx))
+            end
         end
     end
     
     # Gauche
     if x>1 
-        if grille[y,x-1]!= typemax(Int64)
-            push!(res,(y,x-1))
+        dy,dx = y,x-1
+        if grille[dy,dx]!= typemax(Int64)
+            if t==-1 || !is_collision(env,dy,dx,t)   #On utilise le test de t==-1 pour l'évaluation court-circuit(short-circuit evaluation) pour ne pas appeler la fonction is_collision si on utilise neighbors pour la partie 1 du projet 
+                push!(res,(dy,dx))
+            end
         end
     end
 
     # Haut
     if y>1 
-        if grille[y-1,x]!= typemax(Int64)
-            push!(res,(y-1,x))
+        dy,dx = y-1,x
+        if grille[dy,dx]!= typemax(Int64)
+            if t==-1 || !is_collision(env,dy,dx,t)   #On utilise le test de t==-1 pour l'évaluation court-circuit(short-circuit evaluation) pour ne pas appeler la fonction is_collision si on utilise neighbors pour la partie 1 du projet 
+                push!(res,(dy,dx))
+            end
         end
     end
 
     # Bas
     if y<n
-        if grille[y+1,x]!= typemax(Int64)
-            push!(res,(y+1,x))
+        dy,dx = y+1,x
+        if grille[dy,dx]!= typemax(Int64)
+            if t==-1 || !is_collision(env,dy,dx,t)   #On utilise le test de t==-1 pour l'évaluation court-circuit(short-circuit evaluation) pour ne pas appeler la fonction is_collision si on utilise neighbors pour la partie 1 du projet 
+                push!(res,(dy,dx))
+            end
         end
     end
 
     return res
 end
 
-
+# Visualisation des algos de recherche de chemins 
 function plotVisited(map, chemin, visited, distance, nbVisited, cout, D, A,nameAlgo)
     n, m = size(map)
 
@@ -137,4 +155,23 @@ function plotVisited(map, chemin, visited, distance, nbVisited, cout, D, A,nameA
     savefig(p, "output"*nameAlgo*".png")
 
     display(p)  # Affichage
+end
+
+#***********Partie 2 du projet**********
+
+# Fonction pour vérifier si la case (y, x) est occupée à l'instant t
+function is_collision(env::Environment, y::Int64, x::Int64, t::Int64)
+    # Si la case n'a aucune réservation, c'est libre
+    if !haskey(env.dyn_obcls, (y, x))
+        return false
+    end
+    
+    # Sinon, on vérifie si t tombe dans un des intervalles réservés
+    for (start_t, end_t) in env.dyn_obcls[(y, x)]
+        if start_t <= t <= end_t
+            return true # Collision !
+        end
+    end
+    
+    return false
 end

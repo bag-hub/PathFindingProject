@@ -4,7 +4,8 @@ using DataStructures
 #***********ALGO BFS*********************************
 
 function algoBFS(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
-    map = loadMap(fname)
+    env = emptyEnv(fname)
+    map = env.map
 
     #Cas où A ou D se trouve sur un obsltacle : un mur ou un arbre
     if (map[A[1],A[2]]==typemax(Int64) || map[A[1],A[2]]==typemax(Int64))
@@ -30,7 +31,7 @@ function algoBFS(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
 
          if !(u in visited)
             push!(visited,u)
-            ngbr = neighbors(map,u)
+            ngbr = neighbors(env,u,-1)
             for s in ngbr
                 if !(s in visited)
                     enqueue!(q,s)
