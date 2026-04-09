@@ -190,7 +190,7 @@ function main()
     # TEST RECOMMANDÉ
     ##################################################
 
-    algoMainP2("crossing",6)
+    algoMainP2("crossing",14)
 
 end
 

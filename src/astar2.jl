@@ -2,7 +2,7 @@
 # A* Space-Time (Pseudo-SIPP)
 ##################################################
 
-function algoAstar2(env::Environment, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
+function algoAstar2(env::Environment, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64}, start_time::Int64)
     map = env.map
     
     # La file de priorité stocke maintenant l'état spatio-temporel : (y, x, t)
