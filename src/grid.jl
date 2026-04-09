@@ -81,7 +81,7 @@ function neighbors(env::Environment, s::Tuple{Int64,Int64}, t::Int64)
     res = MutableLinkedList{Tuple{Int64,Int64}}()
 
     # Définition des mouvements possibles : Droite, Gauche, Haut, Bas, et Attente sur place
-    moves = [(0, 1), (0, -1), (-1, 0), (1, 0), (0, 0)]
+    moves = [(0, 1), (0, -1), (-1, 0), (1, 0)]#, (0, 0)] attente
 
     for (dy, dx) in moves
         ny = y + dy

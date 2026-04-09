@@ -8,6 +8,7 @@ Pkg.activate(".")
 
 # 2. Importation des librairies globales
 using DataStructures
+using Random
 using Plots
 gr()
 
@@ -71,28 +72,41 @@ function algoMainP2(scenario::String, n::Int=2)
     ##################################################
     # 1. INITIALISATION DES SCÉNARIOS
     ##################################################
+
     if scenario == "door_to_door"
-        println("Création de ", n, " robots (porte à porte)...")
+        # Scénario standard : Déplacement de porte à porte
+        # Teste la navigation de base et l'échelonnement des départs
         amrs = create_door_to_door_amrs(n)
 
     elseif scenario == "collision"
-        # Scénario de collision frontale : on récupère les portes et on oppose deux robots
+        # Scénario critique (Edge Conflict) : Face-à-face programmé
+        # On force deux robots à emprunter exactement le même chemin en sens inverse
+        # pour vérifier que le SIPP met l'un d'eux en attente.
         doors = get_doors()
         
         # Robot 1 : de la porte 1 vers la porte 8 (départ à t=0)
         push!(amrs, AMR(1, doors[1], doors[8], 0, 0, 0, Tuple{Int64,Int64}[]))
         
-        # Robot 2 : de la porte 8 vers la porte 1 (départ à t=0, trajet inverse)
+        # Robot 2 : de la porte 8 vers la porte 1 (départ à t=0)
         push!(amrs, AMR(2, doors[8], doors[1], 0, 0, 0, Tuple{Int64,Int64}[]))
 
+    elseif scenario == "crossing"
+        # Scénario d'intersection : Les trajectoires des robots se croisent
+        # Permet d'observer la négociation dynamique aux carrefours
+        amrs = create_crossing_amrs(n)
+
     elseif scenario == "multiple"
-        println("Création de ", n, " robots (multitude)...")
-        amrs = create_door_to_door_amrs(n)
+        # Scénario de charge (Stress-test) : Un trafic dense dans l'entrepôt
+        # Réutilise la logique des croisements mais avec un grand nombre 'n' de robots
+        # pour éprouver la limite de congestion et tester les "restarts".
+        amrs = create_crossing_amrs(n)
 
     else
-        println("Erreur : Scénario inconnu !")
-        return
+        # Gestion de sécurité en cas de paramètre incorrect
+        println("Erreur : Scénario inconnu")
     end
+
+    
 
     ##################################################
     # 2. AFFICHAGE DES ROBOTS
@@ -170,7 +184,13 @@ function main()
     # TEST 4 — Stress Test (Charge Forte) : 14 robots
     ##################################################
     # Pousse l'algorithme dans ses retranchements pour tester les redémarrages (Restarts).
-    algoMainP2("multiple", 8)
+    #algoMainP2("multiple", 8)
+
+    ##################################################
+    # TEST RECOMMANDÉ
+    ##################################################
+
+    algoMainP2("crossing",6)
 
 end
 

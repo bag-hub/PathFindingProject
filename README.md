@@ -57,7 +57,7 @@ function main()
     # TEST 3 : Scénario Intermédiaire (6 robots simultanés)
     # Observe la négociation des croisements multiples.
     # ---------------------------------------------------------
-    # algoMainP2("multiple", 6)
+    # algoMainP2("crossing", 6)
 
     # ---------------------------------------------------------
     # TEST 4 : Stress Test (14 robots simultanés)

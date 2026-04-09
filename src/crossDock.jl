@@ -1,7 +1,9 @@
-#Cross Dock et gestion de la partie 2 du projet
+##################################################
+# crossDock.jl – Gestion des AMRs et réservation
+##################################################
 
 ##################################################
-# crossDock.jl
+# 1. STRUCTURES DE DONNÉES
 ##################################################
 
 struct Mission
@@ -10,16 +12,22 @@ struct Mission
     release_time::Int64
 end
 
+mutable struct AMR
+    id::Int64
+    start::Tuple{Int64,Int64}
+    goal::Tuple{Int64,Int64}
+    start_time::Int64
+    duration::Int64
+    finish_time::Int64
+    path::Vector{Tuple{Int64,Int64}}
+end
+
 ##################################################
-# RESERVATION TABLE
+# 2. GESTION DE L'ENVIRONNEMENT SPATIO-TEMPOREL
 ##################################################
 
-function add_path_to_env!(env, path, start_time)
-    ##################################################
-    # LOGIC:
-    # Reserve each position at its time
-    ##################################################
-    
+function add_path_to_env!(env, path::Vector{Tuple{Int64,Int64}}, start_time::Int64)
+    # Réservation de chaque case du chemin à l'instant t correspondant
     for i in 1:length(path)
         t = start_time + i - 1
         pos = path[i]
@@ -30,177 +38,163 @@ function add_path_to_env!(env, path, start_time)
 
         push!(env.dyn_obcls[pos], (t, t))
     end
-end
 
-##################################################
-# PLAN SINGLE ROBOT
-##################################################
+    # ---------------------------------------------------------
+    # LIBÉRATION DE LA CASE FINALE
+    # ---------------------------------------------------------
+    # Une fois que l'AMR a terminé sa mission, on s'assure que 
+    # sa position finale ne bloque pas indéfiniment les autres robots.
+    # On libère l'espace pour une fenêtre de temps donnée (ex: 20 unités).
+    last_pos = path[end]
+    finish_time = start_time + length(path)
 
-function plan_single_amr!(env, robot::AMR)
-    # Paramètres de flexibilité temporelle
-    max_attempts = 3
-    delay = 2 # Décalage du temps de départ en cas d'échec (en unités de temps / minutes)
-
-    # Boucle d'essais : on tente de planifier le trajet plusieurs fois en retardant le départ si nécessaire
-    for attempt in 1:max_attempts
-        
-        # Appel de l'algorithme A* spatio-temporel (SIPP) en prenant en compte l'heure de départ
-        result = algoAstar2(env, robot.start, robot.goal, robot.start_time)
-
-        # Si un chemin valide a été trouvé (pas de conflit absolu)
-        if result !== nothing
-            map, path, v, d, n, c = result
-
-            # Sauvegarde de la trajectoire trouvée dans l'entité du robot
-            robot.path = path
-            
-            # Calcul du temps de fin de mission (start_time + makespan retourné par A*)
-            robot.finish_time = robot.start_time + c
-
-            # Mise à jour de la table de réservation globale de l'environnement
-            # Cela garantit que les prochains robots contourneront ce chemin
-            add_path_to_env!(env, path, robot.start_time)
-
-            return true # Planification réussie
+    for t in finish_time+1 : finish_time + 20
+        if haskey(env.dyn_obcls, last_pos)
+            # Suppression de la réservation à l'instant t sur la case d'arrivée
+            deleteat!(env.dyn_obcls[last_pos], findall(x -> x[1] == t, env.dyn_obcls[last_pos]))
         end
-
-        # En cas d'échec (ex: embouteillage insurmontable à t=start_time), 
-        # on décale le départ du robot dans le temps avant de réessayer.
-        println("   Aucun chemin pour AMR ", robot.id, " -> nouvelle tentative dans ", delay, " minutes")
-        robot.start_time += delay
     end
-
-    # Si le robot ne trouve toujours pas de chemin après max_attempts, on renvoie un échec global
-    return false
 end
 
 ##################################################
-# PRIORITY HEURISTIC (Longest Path First + VIP)
+# 3. GÉNÉRATION DES SCÉNARIOS
 ##################################################
 
-function estimated_priority(amr::AMR, priority_boost_id::Int64)
-    ##################################################
-    # LOGIC:
-    # 1. If this robot caused a failure last time,
-    #    give it absolute priority (-999999).
-    # 2. Else, prioritize longest distance first.
-    ##################################################
-    
-    if amr.id == priority_boost_id
-        return -999999
-    end
-    
-    # On suppose ici que ta fonction heuristic(A, B) est dispo (distance de Manhattan)
-    # Plus le trajet théorique est long, plus le chiffre est négatif (donc sort en 1er)
-    return -heuristic(amr.start, amr.goal)
-end
-
-##################################################
-# BUILD PRIORITY QUEUE
-##################################################
-
-function build_priority_queue(amrs::Vector{AMR}, priority_boost_id::Int64)
-    ##################################################
-    # LOGIC:
-    # Insert all robots into the queue
-    # ordered by our custom priority heuristic
-    ##################################################
-    
-    pq = PriorityQueue{AMR, Int64}()
-
-    for robot in amrs
-        pq[robot] = estimated_priority(robot, priority_boost_id)
-    end
-
-    return pq
-end
-
-##################################################
-# DOOR POSITIONS (14 quais)
-##################################################
-
+# Positions fixes des quais de chargement/déchargement
 function get_doors()
-
-    return [(1,4),(1,9),(1,14),(1,19),(1,24),(1,29),(1,34),
-        (11,4),(11,9),(11,14),(11,19),(11,24),(11,29),(11,34)]
-
+    return [
+        (1,4), (1,9), (1,14), (1,19), (1,24), (1,29), (1,34),
+        (11,4), (11,9), (11,14), (11,19), (11,24), (11,29), (11,34)
+    ]
 end
 
-##################################################
-# CREATE AMRS FROM DOOR TO DOOR
-##################################################
-
-function create_door_to_door_amrs(n::Int)
-    # Récupération de la liste des coordonnées des portes (quais de l'entrepôt)
+# Scénario : Trafic croisé aléatoire (Stress-test des intersections)
+function create_crossing_amrs(n::Int)
     doors = get_doors()
     amrs = Vector{AMR}()
 
-    # Boucle de création de 'n' robots
     for i in 1:n
-        # Le point de départ est assigné à la porte 'i'
         start = doors[i]
+        
+        # Sélection d'une destination aléatoire différente du point de départ
+        possible_goals = copy(doors)
+        deleteat!(possible_goals, findfirst(x -> x == start, possible_goals))
+        goal = rand(possible_goals)
+        
+        # Introduction d'une variabilité dans les départs (0 à 5)
+        start_time = rand(0:5)
+        duration = abs(start[1] - goal[1]) + abs(start[2] - goal[2])
+        
+        push!(amrs, AMR(i, start, goal, start_time, duration, 0, Tuple{Int64,Int64}[]))
+    end
 
-        # Le point d'arrivée est décalé pour forcer le robot à traverser l'entrepôt.
-        # Le modulo permet de reboucler au début du tableau si l'index dépasse le nombre total de portes.
+    return amrs
+end
+
+# Scénario : Déplacement structuré d'un quai à son opposé
+function create_door_to_door_amrs(n::Int)
+    doors = get_doors()
+    amrs = Vector{AMR}()
+
+    for i in 1:n
+        start = doors[i]
+        
+        # Le modulo garantit un trajet traversant l'entrepôt
         goal_index = mod(i + 6, length(doors)) + 1
         goal = doors[goal_index]
-
-        # Départs différés : chaque robot part 1 minute (ou unité de temps) après le précédent 
-        # Cela permet d'éviter un engorgement immédiat au temps t=0
+        
+        # Échelonnement strict des départs pour lisser la charge initiale
         start_time = i - 1
-
-        # Calcul théorique de la durée du trajet sans obstacle (Distance de Manhattan)
         duration = abs(start[1] - goal[1]) + abs(start[2] - goal[2])
-
-        # Initialisation du robot avec son identifiant, ses coordonnées, ses temps, et un chemin vide
-        push!(
-            amrs, 
-            AMR(i, start, goal, start_time, duration, 0, Tuple{Int64,Int64}[])
-        )
+        
+        push!(amrs, AMR(i, start, goal, start_time, duration, 0, Tuple{Int64,Int64}[]))
     end
 
     return amrs
 end
 
 ##################################################
-# MAIN SIMULATION (With Failed-First Restart)
+# 4. PLANIFICATION ET HEURISTIQUES PRIORITAIRES
+##################################################
+
+# Heuristique : Priorité aux trajets les plus longs, avec mécanisme VIP
+function estimated_priority(amr::AMR, priority_boost_id::Int64)
+    # Si le robot a causé un échec au cycle précédent, il devient prioritaire absolu
+    if amr.id == priority_boost_id
+        return -999999
+    end
+    # Sinon, priorité basée sur la distance de Manhattan estimée (plus long = prioritaire)
+    return -heuristic(amr.start, amr.goal)
+end
+
+function build_priority_queue(amrs::Vector{AMR}, priority_boost_id::Int64)
+    pq = PriorityQueue{AMR, Int64}()
+    for robot in amrs
+        pq[robot] = estimated_priority(robot, priority_boost_id)
+    end
+    return pq
+end
+
+# Planification d'un AMR unique (Replanification immédiate en cas d'échec)
+function plan_single_amr!(env::Environment, robot::AMR)
+    max_attempts = 5
+
+    for attempt in 1:max_attempts
+        println("   Tentative ", attempt, " pour AMR ", robot.id)
+
+        # Appel de l'algorithme A* SIPP
+        result = algoAstar2(env, robot.start, robot.goal, robot.start_time)
+
+        if result !== nothing
+            map, path, v, d, n, makespan = result
+            
+            robot.path = path
+            robot.finish_time = robot.start_time + makespan
+            
+            # Validation globale de la trajectoire
+            add_path_to_env!(env, path, robot.start_time)
+            
+            println("   Chemin trouvé pour AMR ", robot.id)
+            return true
+        end
+
+        # Comportement NO WAIT : recalcul immédiat
+        println("   Aucun chemin pour AMR ", robot.id, " → recalcul immédiat")
+    end
+
+    println("   Échec après ", max_attempts, " tentatives pour AMR ", robot.id)
+    return false
+end
+
+##################################################
+# 5. ORCHESTRATEUR PRINCIPAL (CROSS-DOCKING)
 ##################################################
 
 function simulate_crossdock(fname::String, amrs::Vector{AMR})
-    
     max_restarts = 5
     restarts = 0
     priority_boost_id = -1
     
     global_finish = 0
-    env = nothing # Déclaré ici pour pouvoir le retourner à la fin
+    env = nothing
 
-    ##################################################
-    # MAIN RESTART LOOP
-    ##################################################
+    # Boucle de redémarrage : Failed-First Restart
     while restarts <= max_restarts
         println("\n--- TENTATIVE DE PLANIFICATION (Essai ", restarts + 1, ") ---")
         
-        ##################################################
-        # RESET ENVIRONMENT & VARIABLES
-        ##################################################
         env = emptyEnv(fname)
         global_finish = 0
         success_all = true
 
-        # Vider les chemins précédents des robots en cas de restart
+        # Réinitialisation des chemins de la tentative précédente
         for r in amrs
             r.path = Tuple{Int64,Int64}[]
         end
 
-        ##################################################
-        # BUILD PRIORITY QUEUE
-        ##################################################
+        # Construction de la file d'attente avec prise en compte du VIP éventuel
         pq = build_priority_queue(amrs, priority_boost_id)
 
-        ##################################################
-        # PLAN ROBOTS ONE BY ONE
-        ##################################################
+        # Planification séquentielle
         while !isempty(pq)
             robot = dequeue!(pq)
             println("Planning AMR ", robot.id)
@@ -208,29 +202,20 @@ function simulate_crossdock(fname::String, amrs::Vector{AMR})
             success = plan_single_amr!(env, robot)
 
             if success
-                ##################################################
-                # UPDATE GLOBAL FINISH
-                ##################################################
-                if robot.finish_time > global_finish
-                    global_finish = robot.finish_time
-                end
+                # Mise à jour du Makespan global
+                global_finish = max(global_finish, robot.finish_time)
             else
-                ##################################################
-                # PLANNING FAILED -> TRIGGER RESTART
-                ##################################################
                 println(" IMPOSSIBLE DE PLANIFIER L'AMR ", robot.id)
                 println(" Déclenchement du Failed-First Restart...")
                 
-                # Ce robot devient le VIP pour la prochaine tentative
+                # Le robot bloquant reçoit le boost de priorité pour la prochaine boucle
                 priority_boost_id = robot.id
                 success_all = false
-                break # On casse la boucle while interne pour recommencer depuis le début
+                break
             end
         end
 
-        ##################################################
-        # CHECK SUCCESS
-        ##################################################
+        # Si tous les robots ont trouvé un chemin valide, on arrête la boucle
         if success_all
             println("\n SUCCÈS TOTAL DE LA PLANIFICATION ! Temps de fin global : ", global_finish)
             return amrs, env, global_finish
@@ -239,9 +224,6 @@ function simulate_crossdock(fname::String, amrs::Vector{AMR})
         restarts += 1
     end
 
-    ##################################################
-    # IF WE EXCEEDED MAX RESTARTS
-    ##################################################
     println("\n ÉCHEC TOTAL après ", max_restarts, " redémarrages. Problème insolvable avec cette heuristique.")
     return amrs, env, global_finish
 end
