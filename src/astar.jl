@@ -13,9 +13,9 @@ function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
 
     pq[D] = heuristic(D, A)
 
-    #treated permet de stocker les sommets dont leur coût est déjà minimal afin d'optimiser en ne les rajoutant encore dans la file de priorité
+    #treated permet de stocker les sommets dont le coût de leur est déjà minimal afin d'optimiser en les rajoutant encore dans la file de priorité
     treated = Set{Tuple{Int64,Int64}}()
-    #Pour  compter le nombre de sommets visités : mesurer la performance
+    #Pour  compter le nombre de sommets visités pour comparer la performance avecles autres algos
     visited = Set{Tuple{Int64,Int64}}()
 
     while !isempty(pq)
@@ -52,12 +52,10 @@ function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
         return
     end
 
-    coutCh=map[D[1],D[2]]
     chemin = Tuple{Int64,Int64}[]
     push!(chemin, A)
     s = dictParent[A]
     while s != D
-        coutCh+=map[s[1],s[2]]
         push!(chemin, s)
         s = dictParent[s]
     end
@@ -70,7 +68,7 @@ function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
     println("Distance D->A :", distance)
     println("Number of states evaluated : ", nbVisited)
     println("Coût D->A :", dist[A])
-    println("Coût réelle D->A :", coutCh)
+    println("Coût réelle D->A :", dist[A])
 
     str = string(D)
     #début : fin : pas
@@ -79,5 +77,6 @@ function algoAstar(fname::String, D::Tuple{Int64,Int64}, A::Tuple{Int64,Int64})
     end
     println("Path D->A : " * str)
     nbVisited = length(visited)
-    return map,chemin,visited,distance,nbVisited,coutCh
+    
+    return map,chemin,visited,distance,nbVisited,dist[A]
 end
